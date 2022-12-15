@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cmath>
 #include <vector>
+#include <algorithm>
 
 #include <ros/ros.h>
 
@@ -24,6 +25,8 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Pose.h>
 #include <moveit_msgs/OrientationConstraint.h>
+#include <sensor_msgs/PointCloud2.h>
+#include <geometry_msgs/Point32.h>
 
 using namespace std;
 
@@ -37,6 +40,162 @@ struct Poly_bound_box{
 	float box[4]; // {max_x, min_x, max_y, min_y}
 };
 
+/*
+struct kd_node{
+    geometry_msgs::Point32 data;
+    int axis;
+    kd_node *l_child = NULL;
+    kd_node *r_child = NULL;
+    kd_node *parent = NULL;
+};
+
+bool dim_comp_0(geometry_msgs::Point32 a, geometry_msgs::Point32 b){
+    return (a.x < b.x);
+}
+
+bool dim_comp_1(geometry_msgs::Point32 a, geometry_msgs::Point32 b){
+    return (a.y < b.y);
+}
+
+int findMedian(geometry_msgs::Point32 a[], int dim, int start, int end){
+    int med = (end-start+1)/2+start;
+    if (dim == 0){
+        nth_element(a+start, a+med, a+end+1, dim_comp_0);
+    }else{
+        nth_element(a+start, a+med, a+end+1, dim_comp_1);
+    }
+    return med;
+}
+
+// kdtree class
+class kdtree{
+    public:
+    kd_node* root;
+    
+    kd_node* construct(sensor_msgs::PointCloud2 cloud, kd_node *par, int dim, int start, int end){
+        kd_node* temp_node;
+        temp_node = new kd_node;
+        int median;
+        if (start == end){
+            temp_node->data = cloud[start];
+            temp_node->axis = dim;
+            temp_node->parent = par;
+        }else if (start>end){
+            return NULL;
+        }else{
+            median = findMedian(cloud, dim, start, end);
+            temp_node->data = cloud[median];
+            temp_node->axis = dim;
+            temp_node->parent = par;
+            temp_node->l_child = construct(cloud, temp_node, (dim+1)%2, start, median-1);
+            temp_node->r_child = construct(cloud, temp_node, (dim+1)%2, median+1, end);
+        }
+        //cout<<"start: "<<start<<" end: "<<end<<endl;
+        //cout<<temp_node->data.x<<", "<<temp_node->data.y<<endl;
+        return temp_node;
+    }
+    
+    float find_dst(geometry_msgs::Point32 a, geometry_msgs::Point32 b){
+        return sqrt(pow((b.x-a.x), 2) + pow((b.y-a.y), 2));
+    }
+    
+    float find_dst(geometry_msgs::Point32 a, geometry_msgs::Point32 b, int dim){
+        if (dim==0){
+            return abs((b.x-a.x));
+        }else{
+            return abs((b.y-a.y));
+        }
+    }
+    
+    int which_child(kd_node *q_n){
+        if (q_n->parent->l_child == q_n){
+            return 0;
+        }else{
+            return 1;
+        }
+    }
+    
+    kd_node* find_nearest_leaf(geometry_msgs::Point32 q_pt, int dim, kd_node *s_pt){
+        kd_node* temp;
+        if (dim == 0){
+            if (q_pt.x >= s_pt->data.x){
+                if (s_pt->r_child == NULL){
+                    return s_pt;
+                }
+                temp = find_nearest_leaf(q_pt, (dim+1)%2, s_pt->r_child);
+            }else{
+                if (s_pt->l_child == NULL){
+                    return s_pt;
+                }
+                temp = find_nearest_leaf(q_pt, (dim+1)%2, s_pt->l_child);
+            }
+        }else{
+            if (q_pt.y >= s_pt->data.y){
+                if (s_pt->r_child == NULL){
+                    return s_pt;
+                }
+                temp = find_nearest_leaf(q_pt, (dim+1)%2, s_pt->r_child);
+            }else{
+                if (s_pt->l_child == NULL){
+                    return s_pt;
+                }
+                temp = find_nearest_leaf(q_pt, (dim+1)%2, s_pt->l_child);
+            }
+        }
+    }
+    
+    
+    kd_node* find_nearest(geometry_msgs::Point32 q_pt, int dim, kd_node *s_pt){
+        kd_node *nnode, *par_n, *tem_n;
+        float min_dist, dist;
+        int ax;
+        nnode = find_nearest_leaf(q_pt, dim, s_pt);
+        min_dist = find_dst(q_pt, nnode->data);
+        tem_n = nnode;
+        par_n = tem_n->parent;
+        
+        while (par_n != NULL){
+            ax = tem_n->axis;
+            dist = find_dst(q_pt, tem_n->data, ax);
+            //cout<< "min dist " << min_dist <<endl;
+            //cout<< "axis dist "<< dist << endl;
+            //cout<< tem_n->data.x << ", " << tem_n->data.y << endl;
+            if (dist < min_dist){
+                dist = find_dst(q_pt, tem_n->data);
+                if (dist<min_dist){
+                    min_dist = dist;
+                    nnode = tem_n;
+                }
+                
+                if (which_child(tem_n)==0 && par_n->r_child != NULL){
+                    tem_n = find_nearest_leaf(q_pt, ax, par_n->r_child);
+                    dist = find_dst(q_pt, tem_n->data);
+                    if (dist<min_dist){
+                        min_dist = dist;
+                        nnode = tem_n;
+                    }
+                }else if (which_child(tem_n)==1 && par_n->l_child != NULL){
+                    tem_n = find_nearest_leaf(q_pt, ax, par_n->l_child);
+                    dist = find_dst(q_pt, tem_n->data);
+                    if (dist<min_dist){
+                        min_dist = dist;
+                        nnode = tem_n;
+                    }
+                }
+                
+                
+            }
+            //cout<< "cal dist "<< dist << endl;
+            //cout<< tem_n->data.x << ", " << tem_n->data.y << endl;
+            tem_n = par_n;
+            par_n = tem_n->parent;
+        }
+        return nnode;
+    }
+    
+};
+*/
+// Scarfing class
 class scarf{
 
 	private:
@@ -45,6 +204,8 @@ class scarf{
 	float scarf_center[7];
 	int resolution;
 	int count;
+	
+	int kd_tree_maker = 0;
 	
 	geometry_msgs::Pose target_pose;
 	nav_msgs::Path path;
@@ -57,13 +218,15 @@ class scarf{
 	public:
 	ros::NodeHandle node_handle;
 	ros::Subscriber temp_sub;
+	ros::Subscriber pcl_sub;
 	ros::Publisher path_pub;
 	
 	scarf(std::string grp, moveit::planning_interface::MoveGroupInterface *move0, moveit::planning_interface::PlanningSceneInterface *scene0){
 		count = 0;
 		path.header.frame_id="map";
-
+		
 		temp_sub = node_handle.subscribe("/temp",1, &scarf::temp, this);
+		pcl_sub = node_handle.subscribe("/pcl/points",1, &scarf::pcl_callback, this);
 		path_pub = node_handle.advertise<nav_msgs::Path>("/get_path",1);
 		
 		planning_grp = grp;
@@ -74,6 +237,13 @@ class scarf{
 
 	void temp(const std_msgs::Int64& msg){
 		ROS_INFO_STREAM("Temp: \n" << msg.data << "\n");
+	}
+	
+	void pcl_callback(const sensor_msgs::PointCloud2ConstPtr& input){
+		if (kd_tree_maker == 1){
+			sensor_msgs::PointCloud2 output;
+			output = *input;
+		}
 	}
 	
 	void set_goal(const geometry_msgs::Pose& pose){
