@@ -1,0 +1,27 @@
+<launch>
+  <arg name="robot_name"/>
+  <arg name="init_pose"/>
+  <arg name="init_joints"/>
+  <arg name="use_gui" default="true" />
+  <arg name="paused" default="false"/>
+  <arg name="unpause" value="$(eval '' if arg('paused') else '-unpause')" />
+  
+  <param name="robot_description" command="$(find xacro)/xacro --inorder '$(find ur_description)/urdf/ur5_kinect.urdf.xacro'"/>
+  
+  <node name="spawn_gazebo_model" pkg="gazebo_ros" type="spawn_model" args="-urdf -param robot_description -model $(arg robot_name) $(arg unpause) $(arg init_joints) $(arg init_pose)" respawn="false" output="screen" />
+
+  <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher"> 
+    <param name="use_gui" value="$(arg use_gui)"/>
+    <param name="publish_rate" value = "50"/>
+    <rosparam param="source_list">[/joint_states]</rosparam>
+  </node>
+
+  <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="true" output="screen" />
+  
+  <!-- node pkg="rostopic" type="rostopic" name="fake_joint_calibration" args="pub /calibrated std_msgs/Bool true"/ -->
+  
+  <include file="$(find ur5_kinect_moveit_config)/launch/ros_controllers.launch"/>
+  
+  <!-- The odometry estimator, throttling, fake laser etc. go here -->
+  <!-- All the stuff as from usual robot launch file -->
+</launch>

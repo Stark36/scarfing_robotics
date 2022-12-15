@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<launch>
+  <!-- gazebo settings-->
+  <arg name="use_gui" default="true" />
+  <arg name="paused" default="false"/> <!-- true -->
+  <arg name="gazebo_gui" default="true"/>
+
+
+  <!-- startup simulated world -->
+  <include file="$(find gazebo_ros)/launch/empty_world.launch">
+    <arg name="world_name" default="worlds/empty.world"/>
+    <arg name="paused" value="$(arg paused)"/>
+    <arg name="gui" value="$(arg gazebo_gui)"/>
+  </include>
+
+  <include file="$(find ur5_kinect_moveit_config)/launch/multi_arms.launch"/>
+
+</launch>

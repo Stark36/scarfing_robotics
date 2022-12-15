@@ -1,0 +1,42 @@
+[submodule "src/common-sensors"]
+	path = src/common-sensors
+	url = https://github.com/dairal/common-sensors
+[submodule "src/Universal_Robots_ROS_Driver"]
+	path = src/Universal_Robots_ROS_Driver
+	url = https://github.com/UniversalRobots/Universal_Robots_ROS_Driver.git
+[submodule "src/gazebo_ros_demos"]
+	path = src/gazebo_ros_demos
+	url = https://github.com/ros-simulation/gazebo_ros_demos.git
+[submodule "src/geometric_shapes"]
+	path = src/geometric_shapes
+	url = https://github.com/ros-planning/geometric_shapes.git
+[submodule "src/moveit"]
+	path = src/moveit
+	url = https://github.com/ros-planning/moveit.git
+[submodule "src/moveit_msgs"]
+	path = src/moveit_msgs
+	url = https://github.com/ros-planning/moveit_msgs.git
+[submodule "src/moveit_resources"]
+	path = src/moveit_resources
+	url = https://github.com/ros-planning/moveit_resources.git
+[submodule "src/moveit_tutorials"]
+	path = src/moveit_tutorials
+	url = https://github.com/ros-planning/moveit_tutorials.git
+[submodule "src/moveit_visual_tools"]
+	path = src/moveit_visual_tools
+	url = https://github.com/ros-planning/moveit_visual_tools.git
+[submodule "src/panda_moveit_config"]
+	path = src/panda_moveit_config
+	url = https://github.com/ros-planning/panda_moveit_config.git
+[submodule "src/robotiq"]
+	path = src/robotiq
+	url = https://github.com/filesmuggler/robotiq.git
+[submodule "src/rviz_visual_tools"]
+	path = src/rviz_visual_tools
+	url = https://github.com/PickNikRobotics/rviz_visual_tools
+[submodule "src/srdfdom"]
+	path = src/srdfdom
+	url = https://github.com/ros-planning/srdfdom
+[submodule "src/universal_robot"]
+	path = src/universal_robot
+	url = https://github.com/ros-industrial/universal_robot.git

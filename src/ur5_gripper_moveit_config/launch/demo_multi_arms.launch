@@ -1,0 +1,75 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="use_gui" default="true" />
+  <arg name="use_rviz" default="true" />
+    
+  <!-- move_group settings-->
+  <arg name="moveit_controller_manager" value="ros_control" /> <!-- simple -->
+  <arg name="fake_execution_type" default="interpolate" />
+  <arg name="debug" default="false" />
+  <arg name="pipeline" default="ompl" />
+  <arg name="load_robot_description" value="true" />
+
+  
+
+  <!-- BEGIN ARM 1-->
+  <group ns="arm1">
+    <rosparam file="$(find ur5_gripper_moveit_config)/config/joints_names.yaml" command="load"/>  
+    
+    <include file="$(find ur5_gripper_moveit_config)/launch/planning_context.launch">
+      <arg name="load_robot_description" value = "$(arg load_robot_description)"/>
+    </include>
+    
+    <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
+      <param name="use_gui" value="$(arg use_gui)"/>
+      <rosparam param="source_list">[/joint_states]</rosparam>
+    </node>
+    
+    <include file="$(find ur5_gripper_moveit_config)/launch/move_group.launch">
+      <arg name="allow_trajectory_execution" value="true"/>
+      <arg name="moveit_controller_manager" value="$(arg moveit_controller_manager)" />
+      <arg name="fake_execution_type" value="$(arg fake_execution_type)"/>
+      <arg name="info" value="true"/>
+      <arg name="debug" value="$(arg debug)"/>
+      <arg name="pipeline" value="$(arg pipeline)"/>
+      <arg name="load_robot_description" value="$(arg load_robot_description)"/>
+      <arg name="robot_ns" value="/arm1" />
+    </include>
+
+    <node pkg="tf2_ros" type="static_transform_publisher" name="virtual_joint_broadcaster_0" args="-1 0 0.1 0 0 0 world arm1/base_link"/>
+  </group>
+  
+    <!-- BEGIN ARM 2-->
+  <group ns="arm2">
+    <rosparam file="$(find ur5_gripper_moveit_config)/config/joints_names.yaml" command="load"/>  
+    <include file="$(find ur5_gripper_moveit_config)/launch/planning_context.launch">
+      <arg name="load_robot_description" value = "$(arg load_robot_description)"/>
+    </include>
+    
+    <node name="joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher">
+      <param name="use_gui" value="$(arg use_gui)"/>
+      <rosparam param="source_list">[/joint_states]</rosparam>
+    </node>
+    
+    <include file="$(find ur5_gripper_moveit_config)/launch/move_group.launch">
+      <arg name="allow_trajectory_execution" value="true"/>
+      <arg name="moveit_controller_manager" value="$(arg moveit_controller_manager)" />
+      <arg name="fake_execution_type" value="$(arg fake_execution_type)"/>
+      <arg name="info" value="true"/>
+      <arg name="debug" value="$(arg debug)"/>
+      <arg name="pipeline" value="$(arg pipeline)"/>
+      <arg name="load_robot_description" value="$(arg load_robot_description)"/>
+      <arg name="robot_ns" value="/arm2" />
+    </include>
+
+    <node pkg="tf2_ros" type="static_transform_publisher" name="virtual_joint_broadcaster_1" args="0 0 0.1 0 0 0 world arm2/base_link" />
+    
+    <include file="$(find ur5_gripper_moveit_config)/launch/moveit_rviz.launch" if="$(arg use_rviz)">
+      <arg name="rviz_config" value="$(find ur5_gripper_moveit_config)/launch/moveit_test.rviz"/>
+      <arg name="debug" value="$(arg debug)"/>
+    </include>
+   
+
+  </group>  
+  
+</launch>
