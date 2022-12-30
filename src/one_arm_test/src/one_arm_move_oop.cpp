@@ -5,6 +5,7 @@
 
 #include <ros/ros.h>
 
+
 #include <moveit/move_group_interface/move_group_interface.h>
 #include <moveit/planning_scene_interface/planning_scene_interface.h>
 
@@ -24,8 +25,12 @@
 #include <std_msgs/Int64.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Pose.h>
+#include <geometry_msgs/Point32.h>
 #include <moveit_msgs/OrientationConstraint.h>
+
+#include <sensor_msgs/PointCloud.h>
 #include <sensor_msgs/PointCloud2.h>
+#include <sensor_msgs/point_cloud_conversion.h>
 #include <geometry_msgs/Point32.h>
 
 using namespace std;
@@ -40,7 +45,7 @@ struct Poly_bound_box{
 	float box[4]; // {max_x, min_x, max_y, min_y}
 };
 
-/*
+
 struct kd_node{
     geometry_msgs::Point32 data;
     int axis;
@@ -50,151 +55,160 @@ struct kd_node{
 };
 
 bool dim_comp_0(geometry_msgs::Point32 a, geometry_msgs::Point32 b){
-    return (a.x < b.x);
+	return (a.x < b.x);
 }
 
 bool dim_comp_1(geometry_msgs::Point32 a, geometry_msgs::Point32 b){
-    return (a.y < b.y);
+	return (a.y < b.y);
 }
 
 int findMedian(geometry_msgs::Point32 a[], int dim, int start, int end){
-    int med = (end-start+1)/2+start;
-    if (dim == 0){
-        nth_element(a+start, a+med, a+end+1, dim_comp_0);
-    }else{
-        nth_element(a+start, a+med, a+end+1, dim_comp_1);
-    }
-    return med;
+	int med = (end-start+1)/2+start;
+	if (dim == 0){
+		nth_element(a+start, a+med, a+end+1, dim_comp_0);
+	}else{
+		nth_element(a+start, a+med, a+end+1, dim_comp_1);
+	}
+	return med;
 }
 
 // kdtree class
 class kdtree{
-    public:
-    kd_node* root;
+	public:
+	kd_node* root;
+	kd_node* temp;
+	    	
+	kd_node* construct(geometry_msgs::Point32 cloud[], kd_node *par, int dim, int start, int end){
+		kd_node* temp_node;
+		temp_node = new kd_node;
+		int median;
+		if (start == end){
+			temp_node->data = cloud[start];
+			temp_node->axis = dim;
+			temp_node->parent = par;
+		}else if (start>end){
+			return NULL;
+		}else{
+			median = findMedian(cloud, dim, start, end);
+			temp_node->data = cloud[median];
+			temp_node->axis = dim;
+			temp_node->parent = par;
+			temp_node->l_child = construct(cloud, temp_node, (dim+1)%2, start, median-1);
+			temp_node->r_child = construct(cloud, temp_node, (dim+1)%2, median+1, end);
+		}
+		//cout<<"start: "<<start<<" end: "<<end<<endl;
+		//cout<<temp_node->data.x<<", "<<temp_node->data.y<<endl;
+		return temp_node;
+	}
     
-    kd_node* construct(sensor_msgs::PointCloud2 cloud, kd_node *par, int dim, int start, int end){
-        kd_node* temp_node;
-        temp_node = new kd_node;
-        int median;
-        if (start == end){
-            temp_node->data = cloud[start];
-            temp_node->axis = dim;
-            temp_node->parent = par;
-        }else if (start>end){
-            return NULL;
-        }else{
-            median = findMedian(cloud, dim, start, end);
-            temp_node->data = cloud[median];
-            temp_node->axis = dim;
-            temp_node->parent = par;
-            temp_node->l_child = construct(cloud, temp_node, (dim+1)%2, start, median-1);
-            temp_node->r_child = construct(cloud, temp_node, (dim+1)%2, median+1, end);
-        }
-        //cout<<"start: "<<start<<" end: "<<end<<endl;
-        //cout<<temp_node->data.x<<", "<<temp_node->data.y<<endl;
-        return temp_node;
-    }
+	float find_dst(geometry_msgs::Point32 a, geometry_msgs::Point32 b){
+		return sqrt(pow((b.x-a.x), 2) + pow((b.y-a.y), 2));
+	}
     
-    float find_dst(geometry_msgs::Point32 a, geometry_msgs::Point32 b){
-        return sqrt(pow((b.x-a.x), 2) + pow((b.y-a.y), 2));
-    }
+	float find_dst(geometry_msgs::Point32 a, geometry_msgs::Point32 b, int dim){
+		if (dim==0){
+			return abs((b.x-a.x));
+		}else{
+			return abs((b.y-a.y));
+		}
+	}
     
-    float find_dst(geometry_msgs::Point32 a, geometry_msgs::Point32 b, int dim){
-        if (dim==0){
-            return abs((b.x-a.x));
-        }else{
-            return abs((b.y-a.y));
-        }
-    }
+	int which_child(kd_node *q_n){
+		if (q_n->parent->l_child == q_n){
+			return 0;
+		}else{
+			return 1;
+		}
+	}
     
-    int which_child(kd_node *q_n){
-        if (q_n->parent->l_child == q_n){
-            return 0;
-        }else{
-            return 1;
-        }
-    }
-    
-    kd_node* find_nearest_leaf(geometry_msgs::Point32 q_pt, int dim, kd_node *s_pt){
-        kd_node* temp;
-        if (dim == 0){
-            if (q_pt.x >= s_pt->data.x){
-                if (s_pt->r_child == NULL){
-                    return s_pt;
-                }
-                temp = find_nearest_leaf(q_pt, (dim+1)%2, s_pt->r_child);
-            }else{
-                if (s_pt->l_child == NULL){
-                    return s_pt;
-                }
-                temp = find_nearest_leaf(q_pt, (dim+1)%2, s_pt->l_child);
-            }
-        }else{
-            if (q_pt.y >= s_pt->data.y){
-                if (s_pt->r_child == NULL){
-                    return s_pt;
-                }
-                temp = find_nearest_leaf(q_pt, (dim+1)%2, s_pt->r_child);
-            }else{
-                if (s_pt->l_child == NULL){
-                    return s_pt;
-                }
-                temp = find_nearest_leaf(q_pt, (dim+1)%2, s_pt->l_child);
-            }
-        }
-    }
+	kd_node* find_nearest_leaf(geometry_msgs::Point32 q_pt, int dim, kd_node *s_pt){
+		//kd_node* temp;
+		if (dim == 0){
+			if (q_pt.x >= s_pt->data.x){
+				if (s_pt->r_child == NULL){
+					return s_pt;
+				}else{
+					temp = find_nearest_leaf(q_pt, (dim+1)%2, s_pt->r_child);
+					return temp;
+				}
+
+			}else{
+				if (s_pt->l_child == NULL){
+					return s_pt;
+				}else{
+					temp = find_nearest_leaf(q_pt, (dim+1)%2, s_pt->l_child);
+					return temp;
+				}
+
+			}
+		}else{
+			if (q_pt.y >= s_pt->data.y){
+				if (s_pt->r_child == NULL){
+					return s_pt;
+				}else{
+					temp = find_nearest_leaf(q_pt, (dim+1)%2, s_pt->r_child);
+					return temp;
+				}
+
+			}else{
+				if (s_pt->l_child == NULL){
+					return s_pt;
+				}else{
+					temp = find_nearest_leaf(q_pt, (dim+1)%2, s_pt->l_child);
+					return temp;
+				}
+			}
+		}
+	}
     
     
-    kd_node* find_nearest(geometry_msgs::Point32 q_pt, int dim, kd_node *s_pt){
-        kd_node *nnode, *par_n, *tem_n;
-        float min_dist, dist;
-        int ax;
-        nnode = find_nearest_leaf(q_pt, dim, s_pt);
-        min_dist = find_dst(q_pt, nnode->data);
-        tem_n = nnode;
-        par_n = tem_n->parent;
+	kd_node* find_nearest(geometry_msgs::Point32 q_pt, int dim, kd_node *s_pt){
+		kd_node *nnode, *par_n, *tem_n;
+		float min_dist, dist;
+		int ax;
+		nnode = find_nearest_leaf(q_pt, dim, s_pt);
+		min_dist = find_dst(q_pt, nnode->data);
+		tem_n = nnode;
+		par_n = tem_n->parent;
         
-        while (par_n != NULL){
-            ax = tem_n->axis;
-            dist = find_dst(q_pt, tem_n->data, ax);
-            //cout<< "min dist " << min_dist <<endl;
-            //cout<< "axis dist "<< dist << endl;
-            //cout<< tem_n->data.x << ", " << tem_n->data.y << endl;
-            if (dist < min_dist){
-                dist = find_dst(q_pt, tem_n->data);
-                if (dist<min_dist){
-                    min_dist = dist;
-                    nnode = tem_n;
-                }
-                
-                if (which_child(tem_n)==0 && par_n->r_child != NULL){
-                    tem_n = find_nearest_leaf(q_pt, ax, par_n->r_child);
-                    dist = find_dst(q_pt, tem_n->data);
-                    if (dist<min_dist){
-                        min_dist = dist;
-                        nnode = tem_n;
-                    }
-                }else if (which_child(tem_n)==1 && par_n->l_child != NULL){
-                    tem_n = find_nearest_leaf(q_pt, ax, par_n->l_child);
-                    dist = find_dst(q_pt, tem_n->data);
-                    if (dist<min_dist){
-                        min_dist = dist;
-                        nnode = tem_n;
-                    }
-                }
-                
-                
-            }
-            //cout<< "cal dist "<< dist << endl;
-            //cout<< tem_n->data.x << ", " << tem_n->data.y << endl;
-            tem_n = par_n;
-            par_n = tem_n->parent;
-        }
-        return nnode;
-    }
-    
+		while (par_n != NULL){
+			ax = tem_n->axis;
+			dist = find_dst(q_pt, tem_n->data, ax);
+			//cout<< "min dist " << min_dist <<endl;
+			//cout<< "axis dist "<< dist << endl;
+			//cout<< tem_n->data.x << ", " << tem_n->data.y << endl;
+			if (dist < min_dist){
+				dist = find_dst(q_pt, tem_n->data);
+				if (dist<min_dist){
+					min_dist = dist;
+					nnode = tem_n;
+				}
+				if (which_child(tem_n)==0 && par_n->r_child != NULL){
+					tem_n = find_nearest_leaf(q_pt, ax, par_n->r_child);
+					dist = find_dst(q_pt, tem_n->data);
+					if (dist<min_dist){
+						min_dist = dist;
+						nnode = tem_n;
+					}
+                		}else if (which_child(tem_n)==1 && par_n->l_child != NULL){
+					tem_n = find_nearest_leaf(q_pt, ax, par_n->l_child);
+					dist = find_dst(q_pt, tem_n->data);
+					if (dist<min_dist){
+						min_dist = dist;
+						nnode = tem_n;
+					}
+				}
+
+			}
+			//cout<< "cal dist "<< dist << endl;
+			//cout<< tem_n->data.x << ", " << tem_n->data.y << endl;
+			tem_n = par_n;
+			par_n = tem_n->parent;
+		}
+		return nnode;
+	}
 };
-*/
+
 // Scarfing class
 class scarf{
 
@@ -206,6 +220,8 @@ class scarf{
 	int count;
 	
 	int kd_tree_maker = 0;
+	kdtree tree;
+	sensor_msgs::PointCloud cloud_scan;
 	
 	geometry_msgs::Pose target_pose;
 	nav_msgs::Path path;
@@ -240,10 +256,23 @@ class scarf{
 	}
 	
 	void pcl_callback(const sensor_msgs::PointCloud2ConstPtr& input){
-		if (kd_tree_maker == 1){
-			sensor_msgs::PointCloud2 output;
-			output = *input;
+		if (kd_tree_maker == 0){
+			sensor_msgs::convertPointCloud2ToPointCloud(*input, cloud_scan);
+			ROS_INFO_STREAM("Number of pts: " << cloud_scan.points.size() << "\n");
+			int n = cloud_scan.points.size();
+			geometry_msgs::Point32* cld_pts = &cloud_scan.points[0];
+			tree.root = tree.construct(cld_pts, NULL, 0, 0, n-1);
+			
+			kd_node *temp_node;
+			geometry_msgs::Point32 temp_pt;
+		    	temp_pt.x = 0.05;
+		    	temp_pt.y = 0.05;
+			temp_node = tree.find_nearest(temp_pt, 0, tree.root);
+			
+			ROS_INFO_STREAM("root: " << tree.root->data.z  << "\n");
+			kd_tree_maker = 1;
 		}
+		
 	}
 	
 	void set_goal(const geometry_msgs::Pose& pose){
@@ -484,6 +513,8 @@ class scarf{
 		float dist = 0;
 		Point prev_pt;
 		float alpha;
+		geometry_msgs::Point32 temp_pt;
+		kd_node *temp_node;
 		
 		ROS_INFO_STREAM("Antipodal distance: " << antipodal_dist << "\n");
 		Point move_pt = pt_vertices[0];
@@ -495,10 +526,11 @@ class scarf{
 			counter += 1;
 		    	post.header.stamp = ros::Time::now();
 		    	post.header.frame_id = "map";
-		    		
-		    	post.pose.position.x = move_pt.x;
-			post.pose.position.y = move_pt.y;
-			post.pose.position.z = 0.5;
+		    	
+		    	post.pose.position.x = temp_pt.x = move_pt.x;
+			post.pose.position.y = temp_pt.y = move_pt.y;
+			temp_node = tree.find_nearest(temp_pt, 0, tree.root);
+			post.pose.position.z = temp_node->data.z;
 			path.poses.push_back(post);
 		        
 		        prev_pt = move_pt;
@@ -525,10 +557,11 @@ class scarf{
 				counter += 1;
 			    	post.header.stamp = ros::Time::now();
 			    	post.header.frame_id = "map";
-			    		
-			    	post.pose.position.x = move_pt.x;
-				post.pose.position.y = move_pt.y;
-				post.pose.position.z = 0.5;
+			    	
+				post.pose.position.x = temp_pt.x = move_pt.x;
+				post.pose.position.y = temp_pt.y = move_pt.y;
+				temp_node = tree.find_nearest(temp_pt, 0, tree.root);
+				post.pose.position.z = temp_node->data.z;
 				path.poses.push_back(post);
 
 		    	}
@@ -631,6 +664,8 @@ int main(int argc, char** argv)
 	//scarfer.create_circ_path_plan();
 	scarfer.create_poly_path_plan(vertices);
 	
+	
+	// Goal pose to move to
 	geometry_msgs::Pose temp_pose;
 	temp_pose.position.x = scarf_center[0];
 	temp_pose.position.y = scarf_center[1];
@@ -639,7 +674,6 @@ int main(int argc, char** argv)
 	temp_pose.orientation.y = scarf_center[4];
 	temp_pose.orientation.z = scarf_center[5];
 	temp_pose.orientation.w = scarf_center[6];
-	
 	
 	scarfer.set_goal(temp_pose);
 	scarfer.move_to_goal();
