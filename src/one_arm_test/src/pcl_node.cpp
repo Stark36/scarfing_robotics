@@ -76,6 +76,7 @@ void cloud_cb(const sensor_msgs::PointCloud2ConstPtr& cloud_msg){
 	try{
 		transformStamped = tfBuffer.lookupTransform("map", "arm1/camera_depth_optical_frame", ros::Time(0));
 		
+		// Extraction of transformation matrix
 		//Eigen::Translation3f tl_btol(transform.getOrigin().getX(), transform.getOrigin().getY(), transform.getOrigin().getZ());
 		//double roll, pitch, yaw;
 		//tf::Matrix3x3(transform.getRotation()).getEulerYPR(yaw, pitch, roll);
@@ -93,6 +94,4 @@ void cloud_cb(const sensor_msgs::PointCloud2ConstPtr& cloud_msg){
 		// Publish the data
 		pub.publish(output);
 	}
-	
-	//pub.publish(output);
 }

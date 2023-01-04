@@ -4,11 +4,12 @@
   <arg name="use_gui" default="true" />
   <arg name="paused" default="false"/> <!-- true -->
   <arg name="gazebo_gui" default="true"/>
+  <arg name="world" default="$(find ur5_gripper_moveit_config)/worlds/custom.world" />
 
 
   <!-- startup simulated world -->
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
-    <arg name="world_name" default="worlds/empty.world"/>
+    <arg name="world_name" default="$(arg world)"/>
     <arg name="paused" value="$(arg paused)"/>
     <arg name="gui" value="$(arg gazebo_gui)"/>
   </include>

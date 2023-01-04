@@ -652,7 +652,7 @@ int main(int argc, char** argv)
 	int resolution = 36;
 	
 	// Polygon path plan setup parameters
-	vector<vector<float>> vertices = {{0.5, 0.5}, {0.59, 0.6}, {0.6, 0.72}, {0.45, 0.7}, {0.45, 0.55}};
+	vector<vector<float>> vertices = {{-0.5, 0.5}, {-0.41, 0.6}, {-0.4, 0.72}, {-0.55, 0.7}, {-0.55, 0.55}};
 	
 	std::string grp = "ur5_arm";
 	moveit::planning_interface::MoveGroupInterface move0(grp);
