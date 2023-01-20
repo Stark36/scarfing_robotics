@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<robot name="ur5_multi" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <xacro:arg name="prefix1" default="arm1_" />
+  
+  <xacro:arg name="prefix2" default="arm2_" />
+
+  <xacro:include filename="$(find ur_description)/urdf/ur5_kinect3.urdf.xacro" />
+  <xacro:include filename="$(find ur_description)/urdf/ur5_robotiq85_gripper3.urdf.xacro" />
+
+  <xacro:ur5_kinect prefix="$(arg prefix1)"/>
+  <xacro:ur5_gripper prefix="$(arg prefix2)"/>
+  
+  <link name="world" />
+
+  <joint name="$(arg prefix1)world_joint" type="fixed">
+    <parent link="world" />
+    <child link = "$(arg prefix1)base_link" />
+    <origin xyz="0.0 0.0 0.1" rpy="0.0 0.0 0.0" />
+  </joint>
+  
+  <joint name="$(arg prefix2)world_joint" type="fixed">
+    <parent link="world" />
+    <child link = "$(arg prefix2)base_link" />
+    <origin xyz="-1.0 0.0 0.1" rpy="0.0 0.0 0.0" />
+  </joint>
+  
+</robot>
