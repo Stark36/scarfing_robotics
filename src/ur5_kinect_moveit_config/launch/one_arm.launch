@@ -6,7 +6,7 @@
   <arg name="paused" default="false"/>
   <arg name="unpause" value="$(eval '' if arg('paused') else '-unpause')" />
   
-  <param name="robot_description" command="$(find xacro)/xacro --inorder '$(find ur_description)/urdf/ur5_kinect.urdf.xacro'"/>
+  <param name="robot_description" command="$(find xacro)/xacro --inorder '$(find ur_description)/urdf/ur5_kinect.urdf.xacro' prefix:=''"/>
   
   <node name="spawn_gazebo_model" pkg="gazebo_ros" type="spawn_model" args="-urdf -param robot_description -model $(arg robot_name) $(arg unpause) $(arg init_joints) $(arg init_pose)" respawn="false" output="screen" />
 
@@ -19,7 +19,7 @@
   <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="true" output="screen" />
   
   <!-- node pkg="rostopic" type="rostopic" name="fake_joint_calibration" args="pub /calibrated std_msgs/Bool true"/ -->
-  
+  <rosparam file="$(find ur5_kinect_moveit_config)/config/gazebo_controllers.yaml" />
   <include file="$(find ur5_kinect_moveit_config)/launch/ros_controllers.launch"/>
   
   <!-- The odometry estimator, throttling, fake laser etc. go here -->

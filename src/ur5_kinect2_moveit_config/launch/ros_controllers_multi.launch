@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="prefix1" default="arm1_" />
+  <arg name="prefix2" default="arm2_" />
+  
+  <rosparam file="$(find ur5_kinect2_moveit_config)/config/gazebo_controllers_multi.yaml" subst_value="True"/>
+  <rosparam file="$(find ur5_gripper2_moveit_config)/config/gazebo_controllers_multi.yaml" subst_value="True"/>
+  
+  <!-- Load joint controller configurations from YAML file to parameter server -->
+  <rosparam file="$(find ur5_kinect2_moveit_config)/config/ros_controllers_multi.yaml" command="load" subst_value="True"/>
+  <rosparam file="$(find ur5_gripper2_moveit_config)/config/ros_controllers_multi.yaml" command="load" subst_value="True"/>
+
+  <!-- Load the controllers -->
+  <node name="$(arg prefix1)controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="$(arg prefix1)ur5_arm_controller $(arg prefix1)joint_state_controller $(arg prefix2)ur5_arm_controller $(arg prefix2)gripper_controller $(arg prefix2)joint_state_controller"/>
+
+</launch>

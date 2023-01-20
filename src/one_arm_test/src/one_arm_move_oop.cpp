@@ -213,12 +213,7 @@ class kdtree{
 class scarf{
 
 	private:
-	float head_diameter;
-	float scarf_diameter;
-	float scarf_center[7];
-	int resolution;
 	int count;
-	
 	int kd_tree_maker = 0;
 	kdtree tree;
 	sensor_msgs::PointCloud cloud_scan;
@@ -298,26 +293,16 @@ class scarf{
 		}
 	}
 	
-	void set_scarf_parameters(float head_dia, float scarf_dia, float center[7], int res){
-		head_diameter = head_dia;
-		scarf_diameter = scarf_dia;
-		
-		for (int i = 0; i < 7; ++i) {
-			scarf_center[i] = center[i];
-    		}
-		resolution = res;
-	}
-	
-	void create_circ_path_plan(){
+	void create_circ_path_plan(float head_diameter, float scarf_diameter, float scarf_center[7], int resolution){
 		int panes =floor((scarf_diameter-head_diameter)/head_diameter*2);
-		float diameter = 0.0;
+		float radius = 0.0;
 		int segments = 0;
 		float step = 0;	
 		int counter = 0;
 
 		for (int i = 0; i < panes; i++){
-			segments = resolution*floor(1+diameter/head_diameter*2);
-			diameter += head_diameter/2;
+			segments = resolution*floor(1+radius/head_diameter*2);
+			radius += head_diameter/2;
 			step = 2*M_PI/segments;
 			for (int j = 0; j < segments; j++){
 		    		geometry_msgs::PoseStamped post;
@@ -326,8 +311,8 @@ class scarf{
 		    		post.header.stamp = ros::Time::now();
 		    		post.header.frame_id = "map";
 		    		
-		    		post.pose.position.x = diameter/2.0*sin(j*step) + scarf_center[0];
-				post.pose.position.y = diameter/2.0*cos(j*step) + scarf_center[1];
+		    		post.pose.position.x = radius/2.0*sin(j*step) + scarf_center[0];
+				post.pose.position.y = radius/2.0*cos(j*step) + scarf_center[1];
 				post.pose.position.z = scarf_center[2];
 				path.poses.push_back(post);
 			}
@@ -660,10 +645,9 @@ int main(int argc, char** argv)
 	
 	scarf scarfer(grp, &move0, &scene0);
 	ros::Duration(1.0).sleep();
-	//scarfer.set_scarf_parameters(head_diameter, scarf_diameter, scarf_center, resolution);
-	//scarfer.create_circ_path_plan();
+	scarfer.create_circ_path_plan(head_diameter, scarf_diameter, scarf_center, resolution);
+	ros::Duration(1.0).sleep();
 	scarfer.create_poly_path_plan(vertices);
-	
 	
 	// Goal pose to move to
 	geometry_msgs::Pose temp_pose;

@@ -1,0 +1,29 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="prefix" default="arm1_"/>
+
+  <arg name="paused" default="true"/>
+  <arg name="gazebo_gui" default="true"/>
+  <arg name="initial_joint_positions" doc="Initial joint configuration of the robot" default=" -J $(arg prefix)elbow_joint 0 -J $(arg prefix)shoulder_lift_joint -1.5794 -J $(arg prefix)shoulder_pan_joint 1.5794 -J $(arg prefix)wrist_1_joint -1.5794 -J $(arg prefix)wrist_2_joint -1.5794 -J $(arg prefix)wrist_3_joint 1.5794"/>
+
+  <!-- send robot urdf to param server -->
+  <param name="robot_description" command="$(find xacro)/xacro '$(find ur_description)/urdf/ur5_kinect2.urdf.xacro' prefix:=$(arg prefix)" />
+  <!-- param name="robot_description" textfile="$(find ur5_kinect2_moveit_config)/config/gazebo_ur5.urdf" /-->
+
+  <!-- unpause only after loading robot model -->
+  <arg name="unpause" value="$(eval '' if arg('paused') else '-unpause')" />
+  <!-- push robot_description to factory and spawn robot in gazebo at the origin, change x,y,z arguments to spawn in a different position -->
+  
+  <arg name="world_pose" default="-x -1 -y 0 -z 0.1" />
+  <node name="$(arg prefix)spawn_gazebo_model" pkg="gazebo_ros" type="spawn_model" args="-urdf -param robot_description -model $(arg prefix)robot $(arg unpause) $(arg world_pose) $(arg initial_joint_positions)"
+    respawn="false" output="screen" />
+  
+  <node name="$(arg prefix)joint_state_publisher" pkg="joint_state_publisher" type="joint_state_publisher"> 
+    <param name="use_gui" value="true"/>
+    <param name="publish_rate" value = "50"/>
+    <rosparam param="source_list"> [/joint_states]</rosparam>
+  </node>
+    
+  <node name="$(arg prefix)robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="true" output="screen" />
+
+</launch>

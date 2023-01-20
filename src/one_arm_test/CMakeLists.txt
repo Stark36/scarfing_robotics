@@ -142,7 +142,10 @@ include_directories(
 # add_executable(${PROJECT_NAME}_node src/one_arm_test_node.cpp)
 add_executable(one_arm_move src/one_arm_move.cpp)
 add_executable(one_arm_move_oop src/one_arm_move_oop.cpp)
+add_executable(one_arm_move_viz src/one_arm_move_viz.cpp)
+add_executable(one_arm_move_eff src/one_arm_move_eff.cpp)
 add_executable(pcl_node src/pcl_node.cpp)
+add_executable(pcl_node_viz src/pcl_node_viz.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -160,7 +163,10 @@ add_executable(pcl_node src/pcl_node.cpp)
 # )
 target_link_libraries(one_arm_move ${catkin_LIBRARIES})
 target_link_libraries(one_arm_move_oop ${catkin_LIBRARIES})
+target_link_libraries(one_arm_move_viz ${catkin_LIBRARIES})
+target_link_libraries(one_arm_move_eff ${catkin_LIBRARIES})
 target_link_libraries(pcl_node ${catkin_LIBRARIES})
+target_link_libraries(pcl_node_viz ${catkin_LIBRARIES})
 
 #############
 ## Install ##

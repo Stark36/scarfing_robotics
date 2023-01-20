@@ -18,7 +18,7 @@
 
   <node name="robot_state_publisher" pkg="robot_state_publisher" type="robot_state_publisher" respawn="true" output="screen" />
   
-
+  <rosparam file="$(find ur5_gripper_moveit_config)/config/gazebo_controllers.yaml" />
   <include file="$(find ur5_gripper_moveit_config)/launch/ros_controllers.launch"/>
   
   <!-- The odometry estimator, throttling, fake laser etc. go here -->

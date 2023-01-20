@@ -1,0 +1,1 @@
+$(arg prefix)controller_joint_names: [$(arg prefix)robotiq_85_left_knuckle_joint, $(arg prefix)shoulder_pan_joint, $(arg prefix)shoulder_lift_joint, $(arg prefix)elbow_joint, $(arg prefix)wrist_1_joint, $(arg prefix)wrist_2_joint, $(arg prefix)wrist_3_joint]

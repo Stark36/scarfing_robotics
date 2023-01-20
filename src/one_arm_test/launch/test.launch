@@ -1,11 +1,8 @@
 <?xml version="1.0"?>
 <launch>
-  
-  <!-- BEGIN ARM 2-->
   <group ns="arm2">
     <node pkg="one_arm_test" type="one_arm_move_oop" name="one_arm_move_oop" output="screen"></node>
   </group>
-  
   <node pkg="one_arm_test" type="pcl_node" name="pcl_node" output="screen"></node>
 
   

@@ -6,14 +6,18 @@
   <arg name="gazebo_gui" default="true"/>
   <arg name="world" default="$(find ur5_gripper_moveit_config)/worlds/custom.world" />
 
-
+  <!-- remap from="arm1/camera1/depth/points" to="camera1/depth/points" /-->
+  
   <!-- startup simulated world -->
   <include file="$(find gazebo_ros)/launch/empty_world.launch">
     <arg name="world_name" default="$(arg world)"/>
     <arg name="paused" value="$(arg paused)"/>
     <arg name="gui" value="$(arg gazebo_gui)"/>
   </include>
+  
 
   <include file="$(find ur5_kinect_moveit_config)/launch/multi_arms.launch"/>
+
+
 
 </launch>

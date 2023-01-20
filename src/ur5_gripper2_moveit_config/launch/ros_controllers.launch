@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+<launch>
+
+  <arg name="prefix" default="" />
+
+  <!-- Load joint controller configurations from YAML file to parameter server -->
+  <rosparam file="$(find ur5_gripper2_moveit_config)/config/ros_controllers.yaml" command="load" subst_value="True"/>
+
+  <!-- Load the controllers -->
+  <node name="$(arg prefix)controller_spawner" pkg="controller_manager" type="spawner" respawn="false" output="screen" args="$(arg prefix1)joint_state_controller $(arg prefix)ur5_arm_controller $(arg prefix)gripper_controller "/>
+
+</launch>

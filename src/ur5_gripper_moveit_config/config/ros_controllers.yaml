@@ -82,12 +82,12 @@ ur5_arm_controller:
       i_clamp: 100
     wrist_2_joint:
       p: 100
-      d: 10
+      d: 1
       i: 0.1
       i_clamp: 100
     wrist_3_joint:
       p: 10
-      d: 1
+      d: 0.1
       i: 0.1
       i_clamp: 100
 gripper_controller:

@@ -1,0 +1,10 @@
+<?xml version="1.0"?>
+<launch>
+
+  <node pkg="one_arm_test" type="one_arm_move_viz" name="one_arm_move_viz" output="screen"></node>
+  <node pkg="one_arm_test" type="one_arm_move_eff" name="one_arm_move_eff" output="screen"></node>
+  <node pkg="one_arm_test" type="pcl_node_viz" name="pcl_node_viz" output="screen"></node>
+
+  
+
+</launch>
