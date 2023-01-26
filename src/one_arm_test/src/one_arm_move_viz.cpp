@@ -246,33 +246,6 @@ class eval{
 		(*move_group_interface).setPlanningTime(10.0);
 		planning_scene_interface = scene0;
 		joint_model_group = (*move_group_interface).getCurrentState()->getJointModelGroup(planning_grp);
-		
-		// Adding floor as collision object to planning scene
-		moveit_msgs::CollisionObject collision_object;
-		collision_object.header.frame_id = (*move_group_interface).getPlanningFrame();
-		
-		collision_object.id = "floor";
-		shape_msgs::SolidPrimitive primitive;
-		primitive.type = primitive.BOX;
-		primitive.dimensions.resize(3);
-		primitive.dimensions[primitive.BOX_X] = 3;
-		primitive.dimensions[primitive.BOX_Y] = 3;
-		primitive.dimensions[primitive.BOX_Z] = 0.05;
-		
-		geometry_msgs::Pose floor_pose;
-		floor_pose.orientation.w = 1.0;
-		floor_pose.position.x = 0.0;
-		floor_pose.position.y = 0.0;
-		floor_pose.position.z = 0.0;
-
-		collision_object.primitives.push_back(primitive);
-		collision_object.primitive_poses.push_back(floor_pose);
-		collision_object.operation = collision_object.ADD;
-
-		std::vector<moveit_msgs::CollisionObject> collision_objects;
-		collision_objects.push_back(collision_object);
-		
-		planning_scene_interface->addCollisionObjects(collision_objects);
 	}
 
 	void temp(const std_msgs::Int64& msg){

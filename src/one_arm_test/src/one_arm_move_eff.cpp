@@ -5,7 +5,6 @@
 
 #include <ros/ros.h>
 
-
 #include <moveit/move_group_interface/move_group_interface.h>
 #include <moveit/planning_scene_interface/planning_scene_interface.h>
 
@@ -19,6 +18,7 @@
 #include <moveit_msgs/AttachedCollisionObject.h>
 #include <moveit_msgs/CollisionObject.h>
 
+#include <moveit_msgs/ExecuteTrajectoryActionFeedback.h>
 #include <moveit_visual_tools/moveit_visual_tools.h>
 
 #include <nav_msgs/Path.h>
@@ -33,6 +33,7 @@
 #include <sensor_msgs/point_cloud_conversion.h>
 #include <geometry_msgs/Point32.h>
 
+
 using namespace std;
 
 // Scarfing class
@@ -40,18 +41,23 @@ class scarf{
 
 	private:
 	int count;
+	float end_eff_offset = 0.2;
 	geometry_msgs::Pose target_pose;
 	nav_msgs::Path path;
+	bool move_wall = false;
+	bool cartesian_start = false;
 	
 	std::string planning_grp;
 	moveit::planning_interface::MoveGroupInterface *move_group_interface;
 	moveit::planning_interface::PlanningSceneInterface *planning_scene_interface;
 	const moveit::core::JointModelGroup *joint_model_group;
+	std::vector<moveit_msgs::CollisionObject> collision_objects;
 	
 	public:
 	ros::NodeHandle node_handle;
 	ros::Subscriber temp_sub;
 	ros::Subscriber path_sub;
+	ros::Subscriber exec_feedback_sub;
 	
 	scarf(std::string grp, moveit::planning_interface::MoveGroupInterface *move0, moveit::planning_interface::PlanningSceneInterface *scene0){
 		count = 0;
@@ -59,12 +65,40 @@ class scarf{
 		
 		temp_sub = node_handle.subscribe("/temp",1, &scarf::temp, this);
 		path_sub = node_handle.subscribe("/get_path",1, &scarf::path_callback, this);
+		exec_feedback_sub = node_handle.subscribe("/execute_trajectory/feedback",1, &scarf::exec_feedback_callback, this);	
 				
 		planning_grp = grp;
 		move_group_interface = move0;
 		(*move_group_interface).setPlanningTime(60.0);
 		planning_scene_interface = scene0;
 		joint_model_group = (*move_group_interface).getCurrentState()->getJointModelGroup(planning_grp);
+		
+		
+		// Adding floor as collision object to planning scene
+		moveit_msgs::CollisionObject collision_object;
+		collision_object.header.frame_id = (*move_group_interface).getPlanningFrame();
+		
+		collision_object.id = "floor";
+		shape_msgs::SolidPrimitive primitive;
+		primitive.type = primitive.BOX;
+		primitive.dimensions.resize(3);
+		primitive.dimensions[primitive.BOX_X] = 3;
+		primitive.dimensions[primitive.BOX_Y] = 3;
+		primitive.dimensions[primitive.BOX_Z] = 0.05;
+		
+		geometry_msgs::Pose floor_pose;
+		floor_pose.orientation.w = 1.0;
+		floor_pose.position.x = 0.0;
+		floor_pose.position.y = 0.0;
+		floor_pose.position.z = 0.0;
+
+		collision_object.primitives.push_back(primitive);
+		collision_object.primitive_poses.push_back(floor_pose);
+		collision_object.operation = collision_object.ADD;
+
+		collision_objects.push_back(collision_object);
+		planning_scene_interface->addCollisionObjects(collision_objects);
+		
 	}
 
 	void temp(const std_msgs::Int64& msg){
@@ -72,16 +106,30 @@ class scarf{
 	}
 	
 	void path_callback(const nav_msgs::Path& input){
-		std::vector<geometry_msgs::Pose> waypoints;
-	
 		path.poses = input.poses;
+		ROS_INFO_STREAM("Received region of path plan from evaluator " << "\n");
+		execute_path();
+	}
+	
+	void exec_feedback_callback(const moveit_msgs::ExecuteTrajectoryActionFeedback& feedback){
+		ROS_INFO_STREAM("Feedback status: " << feedback.feedback.state <<"\n");
+		if (feedback.feedback.state == "MONITOR"){
+			move_wall = true;
+		}else{
+			move_wall = false;
+		}	
+	}
+	
+	void execute_path(){
+		std::vector<geometry_msgs::Pose> waypoints;
 		int n_waypoints = path.poses.size();
 		ROS_INFO_STREAM("Number of waypoints: " << n_waypoints << "\n");
+		//Parallel to Z-axis of the world frame
 		path.poses[0].pose.orientation.x = 0.0;
 		path.poses[0].pose.orientation.y = 0.7071068;
 		path.poses[0].pose.orientation.z = 0.0;
 		path.poses[0].pose.orientation.w = 0.7071068;
-		path.poses[0].pose.position.z += 0.2;
+		path.poses[0].pose.position.z += end_eff_offset;
 		set_goal(path.poses[0].pose);
 		move_to_goal();
 		
@@ -90,18 +138,31 @@ class scarf{
 			path.poses[i].pose.orientation.y = 0.7071068;
 			path.poses[i].pose.orientation.z = 0.0;
 			path.poses[i].pose.orientation.w = 0.7071068;
-			path.poses[i].pose.position.z += 0.2;
+			path.poses[i].pose.position.z += end_eff_offset;
 			waypoints.push_back(path.poses[i].pose);
 		}
 		moveit_msgs::RobotTrajectory trajectory;
 		const double jump_threshold = 0.0;
-		const double eef_step = 0.01;
+		const double eef_step = 0.005;
 		double fraction = (*move_group_interface).computeCartesianPath(waypoints, eef_step, jump_threshold, trajectory);
+		// Removal of last trajectory point due to non-increasing time_from_start
+		trajectory.joint_trajectory.points.pop_back();
 		
+		/*
+		int n = trajectory.joint_trajectory.points.size();
+		ROS_INFO_STREAM("tra header stamp " << trajectory.joint_trajectory.points[n-2].time_from_start <<"\n");
+		ROS_INFO_STREAM("tra header stamp " << trajectory.joint_trajectory.points[n-1].time_from_start <<"\n");
 		if ((*move_group_interface).execute(trajectory) == moveit::planning_interface::MoveItErrorCode::SUCCESS){
 			ROS_INFO_STREAM("Completed" <<"\n");
 		}
-		segment();
+		*/
+		
+		// Listen to topic execute_trajectory/feedback for message of type moveit_msgs/ExecuteTrajectoryActionFeedback:
+		// feedback: state: IDLE; arm no longer excuting movement
+		// status: text: ~ ;determines what happened in execution
+		(*move_group_interface).asyncExecute(trajectory);
+		cartesian_start = true;
+		
 	}
 	
 	void set_goal(const geometry_msgs::Pose& pose){
@@ -127,22 +188,44 @@ class scarf{
 		}
 	}
 	
-	void segment(){
+	std::string find_protruding(){
 		std::vector<std::string> links = (*move_group_interface).getLinkNames();
 		robot_state::RobotStatePtr end_state_reached = (*move_group_interface).getCurrentState();
 		
 		const Eigen::Isometry3d& link_state = end_state_reached->getGlobalLinkTransform(links[0]);
-		float closest_link = (link_state.translation())(0); // eff is in negative x direction from viz
+		// eff is in negative x direction from viz
+		float closest_link_pose = (link_state.translation())(0);
+		std::string closest_link = links[0];
 		for (int i = 1; i < links.size(); i++){
 			const Eigen::Isometry3d& link_state = end_state_reached->getGlobalLinkTransform(links[i]);
-			if (closest_link < (link_state.translation())(0)){
-				closest_link = (link_state.translation())(0);
+			if (closest_link_pose < (link_state.translation())(0)){
+				closest_link_pose = (link_state.translation())(0);
+				closest_link = links[i];
 			}
 		}
 		ROS_INFO_STREAM("closest: \n" << closest_link << "\n");
+		return closest_link;
 	}
 	
-	void wall_off(const geometry_msgs::Pose& pose, float length, float width){
+	void wall_off(){
+		if (move_wall && cartesian_start){
+			std::string protrude_link = find_protruding();
+			robot_state::RobotStatePtr end_state_reached = (*move_group_interface).getCurrentState();
+			const Eigen::Isometry3d& protrude_link_iso = end_state_reached->getGlobalLinkTransform(protrude_link);
+			
+			geometry_msgs::Pose wall_pose;
+			wall_pose.position.x = (protrude_link_iso.translation())(0) + 0.2;
+			wall_pose.position.y = (protrude_link_iso.translation())(1);
+			wall_pose.position.z = (protrude_link_iso.translation())(2);
+			wall_pose.orientation.x = 0.0;
+			wall_pose.orientation.y = 0.7071068;
+			wall_pose.orientation.z = 0.0;
+			wall_pose.orientation.w = 0.7071068;
+			wall_ing(wall_pose, 3.0, 3.0);
+		}
+	}
+	
+	void wall_ing(const geometry_msgs::Pose& pose, float length, float width){
 		moveit_msgs::CollisionObject collision_object;
 		collision_object.header.frame_id = (*move_group_interface).getPlanningFrame();
 		
@@ -152,7 +235,7 @@ class scarf{
 		primitive.dimensions.resize(3);
 		primitive.dimensions[primitive.BOX_X] = length;
 		primitive.dimensions[primitive.BOX_Y] = width;
-		primitive.dimensions[primitive.BOX_Z] = 0.05;
+		primitive.dimensions[primitive.BOX_Z] = 0.01;
 		
 		geometry_msgs::Pose floor_pose;
 		floor_pose.orientation.x = pose.orientation.x;
@@ -166,8 +249,10 @@ class scarf{
 		collision_object.primitives.push_back(primitive);
 		collision_object.primitive_poses.push_back(floor_pose);
 		collision_object.operation = collision_object.ADD;
-
-		std::vector<moveit_msgs::CollisionObject> collision_objects;
+		
+		if (collision_objects.size() != 1){
+			collision_objects.pop_back();
+		}
 		collision_objects.push_back(collision_object);
 		
 		planning_scene_interface->addCollisionObjects(collision_objects);
@@ -195,6 +280,7 @@ int main(int argc, char** argv)
 	
 	
 	while(ros::ok()){
+		scarfer.wall_off();
 		ros::spinOnce();
 	}
 	return 0;
