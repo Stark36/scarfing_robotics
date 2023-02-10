@@ -17,6 +17,7 @@ find_package(catkin REQUIRED COMPONENTS
   pcl_conversions
   pcl_ros
   tf2_sensor_msgs
+  moveit_core
 )
 
 ## System dependencies are found with CMake's conventions
@@ -111,7 +112,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
 #  INCLUDE_DIRS include
 #  LIBRARIES one_arm_test
-#  CATKIN_DEPENDS moveit_tutorials roscpp rospy std_msgs
+  CATKIN_DEPENDS moveit_tutorials roscpp rospy std_msgs moveit_core
 #  DEPENDS system_lib
 )
 

@@ -21,8 +21,11 @@
 #include <moveit_msgs/ExecuteTrajectoryActionFeedback.h>
 #include <moveit_visual_tools/moveit_visual_tools.h>
 
+#include <moveit/trajectory_processing/iterative_time_parameterization.h>
+
 #include <nav_msgs/Path.h>
 #include <std_msgs/Int64.h>
+#include <std_msgs/Bool.h>
 #include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/Pose.h>
 #include <geometry_msgs/Point32.h>
@@ -46,6 +49,7 @@ class scarf{
 	nav_msgs::Path path;
 	bool move_wall = false;
 	bool cartesian_start = false;
+	std_msgs::Bool is_scarf_execute_bool;
 	
 	std::string planning_grp;
 	moveit::planning_interface::MoveGroupInterface *move_group_interface;
@@ -58,15 +62,19 @@ class scarf{
 	ros::Subscriber temp_sub;
 	ros::Subscriber path_sub;
 	ros::Subscriber exec_feedback_sub;
+	ros::Publisher is_scarf_execute_pub;
 	
 	scarf(std::string grp, moveit::planning_interface::MoveGroupInterface *move0, moveit::planning_interface::PlanningSceneInterface *scene0){
 		count = 0;
 		path.header.frame_id="world";
 		
+		// Set up of subscribers and publishers
 		temp_sub = node_handle.subscribe("/temp",1, &scarf::temp, this);
 		path_sub = node_handle.subscribe("/get_path",1, &scarf::path_callback, this);
-		exec_feedback_sub = node_handle.subscribe("/execute_trajectory/feedback",1, &scarf::exec_feedback_callback, this);	
-				
+		exec_feedback_sub = node_handle.subscribe("/execute_trajectory/feedback",1, &scarf::exec_feedback_callback, this);
+		is_scarf_execute_pub = node_handle.advertise<std_msgs::Bool>("/is_scarf_execute",1);
+		
+		// Linking to moveit group and planning scene interface
 		planning_grp = grp;
 		move_group_interface = move0;
 		(*move_group_interface).setPlanningTime(60.0);
@@ -74,9 +82,12 @@ class scarf{
 		joint_model_group = (*move_group_interface).getCurrentState()->getJointModelGroup(planning_grp);
 		
 		
-		// Adding floor as collision object to planning scene
+		// Adding floor as collision object to planning scene to account for floor during path planning
 		moveit_msgs::CollisionObject collision_object;
 		collision_object.header.frame_id = (*move_group_interface).getPlanningFrame();
+		// Unused pose field in moveit_msgs::CollisionObject, set to remove warning
+		collision_object.pose.orientation.w = 1.0;
+		collision_object.pose.position.x = 0.0;
 		
 		collision_object.id = "floor";
 		shape_msgs::SolidPrimitive primitive;
@@ -87,6 +98,9 @@ class scarf{
 		primitive.dimensions[primitive.BOX_Z] = 0.05;
 		
 		geometry_msgs::Pose floor_pose;
+		floor_pose.orientation.x = 0.0;
+		floor_pose.orientation.y = 0.0;
+		floor_pose.orientation.z = 0.0;
 		floor_pose.orientation.w = 1.0;
 		floor_pose.position.x = 0.0;
 		floor_pose.position.y = 0.0;
@@ -100,17 +114,20 @@ class scarf{
 		planning_scene_interface->addCollisionObjects(collision_objects);
 		
 	}
-
+	
+	// Subscriber template
 	void temp(const std_msgs::Int64& msg){
 		ROS_INFO_STREAM("Temp: " << msg.data << "\n");
 	}
 	
+	// Subscriber to obtain region of path plan from evaluator
 	void path_callback(const nav_msgs::Path& input){
 		path.poses = input.poses;
 		ROS_INFO_STREAM("Received region of path plan from evaluator " << "\n");
 		execute_path();
 	}
 	
+	// Subscriber to check if manipulator is in motion or if it has stopped
 	void exec_feedback_callback(const moveit_msgs::ExecuteTrajectoryActionFeedback& feedback){
 		ROS_INFO_STREAM("Feedback status: " << feedback.feedback.state <<"\n");
 		if (feedback.feedback.state == "MONITOR"){
@@ -148,23 +165,29 @@ class scarf{
 		// Removal of last trajectory point due to non-increasing time_from_start
 		trajectory.joint_trajectory.points.pop_back();
 		
-		/*
-		int n = trajectory.joint_trajectory.points.size();
-		ROS_INFO_STREAM("tra header stamp " << trajectory.joint_trajectory.points[n-2].time_from_start <<"\n");
-		ROS_INFO_STREAM("tra header stamp " << trajectory.joint_trajectory.points[n-1].time_from_start <<"\n");
-		if ((*move_group_interface).execute(trajectory) == moveit::planning_interface::MoveItErrorCode::SUCCESS){
-			ROS_INFO_STREAM("Completed" <<"\n");
-		}
-		*/
+		robot_trajectory::RobotTrajectory rt(move_group_interface->getCurrentState()->getRobotModel(), planning_grp);
+		rt.setRobotTrajectoryMsg(*move_group_interface->getCurrentState(), trajectory);
+		trajectory_processing::IterativeParabolicTimeParameterization iptp;
+		iptp.computeTimeStamps(rt, 0.005, 0.1);
+		rt.getRobotTrajectoryMsg(trajectory);
+
+
 		
-		// Listen to topic execute_trajectory/feedback for message of type moveit_msgs/ExecuteTrajectoryActionFeedback:
-		// feedback: state: IDLE; arm no longer excuting movement
-		// status: text: ~ ;determines what happened in execution
+		// Execute region coverage path plan asynchronously
 		(*move_group_interface).asyncExecute(trajectory);
-		cartesian_start = true;
 		
+		// Prevent setting cartesian_start before arm begins moving
+		int counter = 0;
+		while (move_wall != true || counter < 3){
+			counter += 1;
+			ros::Duration(1.0).sleep();
+		}
+		cartesian_start = true;
+		is_scarf_execute_bool.data = cartesian_start;
+		is_scarf_execute_pub.publish(is_scarf_execute_bool);
 	}
 	
+	// Set target pose for moving end effector to
 	void set_goal(const geometry_msgs::Pose& pose){
 		target_pose.position.x = pose.position.x;
 		target_pose.position.y = pose.position.y;
@@ -175,6 +198,7 @@ class scarf{
 		target_pose.orientation.w = pose.orientation.w;
 	}
 	
+	// Move end effector to target pose (non-cartesian)
 	void move_to_goal(){
 		(*move_group_interface).setPoseTarget(target_pose);
 		moveit::planning_interface::MoveGroupInterface::Plan move_plan;
@@ -188,12 +212,13 @@ class scarf{
 		}
 	}
 	
+	// Finds the position of the link that is closest to the evaluator
 	std::string find_protruding(){
 		std::vector<std::string> links = (*move_group_interface).getLinkNames();
 		robot_state::RobotStatePtr end_state_reached = (*move_group_interface).getCurrentState();
 		
 		const Eigen::Isometry3d& link_state = end_state_reached->getGlobalLinkTransform(links[0]);
-		// eff is in negative x direction from viz
+		// Effector is in negative x direction from viz
 		float closest_link_pose = (link_state.translation())(0);
 		std::string closest_link = links[0];
 		for (int i = 1; i < links.size(); i++){
@@ -203,11 +228,13 @@ class scarf{
 				closest_link = links[i];
 			}
 		}
-		ROS_INFO_STREAM("closest: \n" << closest_link << "\n");
+		//ROS_INFO_STREAM("closest: \n" << closest_link << "\n");
 		return closest_link;
 	}
 	
+	// Creates a wall to segment of the existing region that the scarfer is working on
 	void wall_off(){
+		// if manipulator is in motion and in region of coverage path plan, begin to segment workspace
 		if (move_wall && cartesian_start){
 			std::string protrude_link = find_protruding();
 			robot_state::RobotStatePtr end_state_reached = (*move_group_interface).getCurrentState();
@@ -222,11 +249,24 @@ class scarf{
 			wall_pose.orientation.z = 0.0;
 			wall_pose.orientation.w = 0.7071068;
 			wall_ing(wall_pose, 3.0, 3.0);
+		// if manipulator is idling and in region of coverage path plan, clean up walls from planning scene
+		}else if (cartesian_start && not move_wall){
+			cartesian_start = false;
+			is_scarf_execute_bool.data = cartesian_start;
+			is_scarf_execute_pub.publish(is_scarf_execute_bool);
+			if (collision_objects.size() != 1){
+				collision_objects.pop_back();
+			}
+			planning_scene_interface->addCollisionObjects(collision_objects);
 		}
 	}
 	
 	void wall_ing(const geometry_msgs::Pose& pose, float length, float width){
 		moveit_msgs::CollisionObject collision_object;
+		// Unused pose field in moveit_msgs::CollisionObject, set to remove warning
+		collision_object.pose.orientation.w = 1.0;
+		collision_object.pose.position.x = 0.0;
+		
 		collision_object.header.frame_id = (*move_group_interface).getPlanningFrame();
 		
 		collision_object.id = "wall";
@@ -281,6 +321,7 @@ int main(int argc, char** argv)
 	
 	while(ros::ok()){
 		scarfer.wall_off();
+		
 		ros::spinOnce();
 	}
 	return 0;
