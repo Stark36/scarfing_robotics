@@ -165,6 +165,7 @@ class scarf{
 		// Removal of last trajectory point due to non-increasing time_from_start
 		trajectory.joint_trajectory.points.pop_back();
 		
+		// Time parameterization to ensure scarfer's trajectory is realistically and adequately slow
 		robot_trajectory::RobotTrajectory rt(move_group_interface->getCurrentState()->getRobotModel(), planning_grp);
 		rt.setRobotTrajectoryMsg(*move_group_interface->getCurrentState(), trajectory);
 		trajectory_processing::IterativeParabolicTimeParameterization iptp;
