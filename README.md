@@ -10,7 +10,7 @@ Source code for development of a simulation for multi-robot collaboration in ROS
 - [Requirements](https://github.com/Stark36/scarfing_robotics#requirements)
 - [Installation and build](https://github.com/Stark36/scarfing_robotics#installation-and-build)
 - [Usage](https://github.com/Stark36/scarfing_robotics#usage)
-- [Other information](https://github.com/Stark36/scarfing_roboticsother-information)
+- [Other information](https://github.com/Stark36/scarfing_robotics#other-information)
 
 * * *
 
