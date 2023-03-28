@@ -16,41 +16,43 @@ Source code for development of a simulation for multi-robot collaboration in ROS
 
 # Introduction
 
-This is a Final Year Project (FYP) conducted under the collaboration of the School of Electrical & Electronics Engineering of Nanyang Technology Universirty and the Agency for Science, Technology and Research (A*STAR).
+This is a Final Year Project (FYP) conducted under the collaboration of the School of Electrical & Electronics Engineering of Nanyang Technology University and the Agency for Science, Technology and Research (A*STAR).
 
-This project seeks to propose and develop a simulation for multi-robot collaborative systems. While there is great potential, replicating and verifying the value of such systems in workplaces can be costly and resource intensive, especially with their physical requirements and costly equipment. Faced with such uncertainty, the justification for investments would be a tall order. Thus, an easily accessible testbed for running such tests, can provide the necessary insights to make calculated decisions.
+This project seeks to propose and develop a simulation for multi-robot collaborative systems. While there is great potential, replicating and verifying the value of such systems in workplaces can be costly and resource intensive, especially with their physical requirements and expensive equipment. Faced with such uncertainty, the justification for investments would be a tall order. Thus, an easily accessible testbed for investigation can provide the necessary insights to make calculated decisions.
 
-To that end, the composite repair process of scarfing will be carried out in simulation. The simulation will consists of 2 robots (Evaluator & Processor) and the scarfing workpiece in the following:
+To that end, the composite repair process of scarfing will be trialed in simulation. The simulation will consists of 2 robots (Evaluator & Processor) and the scarfing workpiece in the following:
 
 1.  Initialisation of the simulation environment
 2.  Modelling and setting up of the dual-robot work cell for simulation
-    - Implementation of independent and asynchronous trajectory execution of robots
-3.  Monitoring of the workpiece Evaluator
-    - Development and implementation of a customised algorithm for path planning of 3D surface coverage region for tooling path by Processor
+    - Implementation of independent and asynchronous trajectory planning and execution of robots
+3.  Monitoring of the workpiece by Evaluator
+    - Development and implementation of a customised algorithm for path planning of 3D surface coverage region for scarf tooling by Processor
 4.  Tooling of the workpiece by Processor
 
 * * *
 
 # Methodology
 
-## Gazebo setup
+## Simulator setup (Gazebo)
 
-XACRO files for the URDF of the robot models and workpiece mesh are present in the custom_urdf folder.
+For the simulator, Gazebo was chosen for its strong integration with ROS. In world construction, the *custom.world* file is located in *worlds* of *ur5_gripper_moveit_config* package, while the robot models and workpiece mesh are in the *custom_urdf* folder.
 
 <u>Robots</u>
 In the two-robot work cell, the Processor and Evaluator utilise the ur5 arm from the universal_robot package as their base.
 
-- Processor: a gripper from the robotiq\_gripper package was attached to the ee\_link (end effector link) of the ur5 arm through the use of a fixed joint.
-- Evaluator, a Kinect sensor from the common\_sensors (Dairal) package was attached to the ee\_link of the ur5 arm through the use of a fixed joint.
+- For the Processor, a *gripper* from the *robotiq\_gripper* package was attached to the *ee\_link* of the ur5 arm through the use of a fixed joint.
+- For the Evaluator, a *kinect* from the *common\_sensors* (Dairal) package was attached to the *ee\_link* of the ur5 arm through the use of a fixed joint.
 
 <u>Workpiece</u>
-The model was designed in Autodesk Fusion 360 with a single curved surface to provide 3D surface topography for emulating a composite workpiece. Also, a support column was added for emulating a workpiece mount.
+The model was designed in Autodesk Fusion 360 with a single curved surface to provide 3D surface topography for emulating a composite workpiece. A support column was also added for emulating a workpiece mount.
 
 </br>
 
-## Integration of MoveIt with Gazebo
+## MoveIt integration with Gazebo
 
-To perform multi-robot manipulation in MoveIt, a combined URDF of the individual robots' URDF is required. One approach involves grouping the robots together in a planning group, allowing a single move\_group\_interface instance to manipulate them simultaneously. Another approach involves grouping each robot in its own planning group, and multiple move\_group\_interface instances corresponding to each robot can be used to manipulate them. However, in both cases, the manipulation of the planning groups must occur sequentially, and independent and asynchronous manipulation is not feasible.
+For manipulator execution, MoveIt was chosen as its framework allows for easy interfacing with a diverse range of libraries for the various manipulator execution processes.
+
+While MoveIt is usually meant for the manipulation of a single robot, it is possible to extend it to multiple robots. One approach involves grouping the robots together in a planning group, allowing a single move\_group\_interface instance to manipulate them simultaneously. Another approach involves grouping each robot in its own planning group, and multiple move\_group\_interface instances corresponding to each robot can be used to manipulate them. However, in both cases, the manipulation of the planning groups must occur sequentially, and independent and asynchronous manipulation is not feasible.
 
 Nonetheless, for developing collaborative multi-robot system simulations, the ability to independently and asynchronously manipulate multiple robots is crucial. As such, a total of 3 methods were explored as workarounds to MoveIt’s limitations. The source code within this repository can be separated into the following segments:
 
@@ -97,17 +99,19 @@ Nonetheless, for developing collaborative multi-robot system simulations, the ab
 
 # Installation and build
 
-1. Clone the existing git repository
+1. Clone the existing git repository.
 
 ```
 git clone https://github.com/Stark36/scarfing_robotics.git
 ```
 
-2. Transfer the packages within src of the cloned folder to the src of your catkin workspace
+2. Transfer the packages within *src* of the cloned folder to the *src* of your catkin workspace.
 
-3. Transfer XACRO files in custom urdf into ur_description of universal_robots package
+3. Transfer XACRO files in *custom\_urdf* into *ur_description* of *universal_robots* package.
 
-4. Build your catkin workspace
+4. Transfer the workpiece mesh to *.gazebo/models*.
+
+5. Build your catkin workspace.
 
 ```
 catkin build
