@@ -13,6 +13,8 @@ Source code for development of a simulation for multi-robot collaboration in ROS
 - [Other information](https://github.com/Stark36/scarfing_robotics#other-information)
 
 * * *
+<img width="338" alt="image" src="https://user-images.githubusercontent.com/48813131/228118605-69b48dbc-034b-46a5-8bc0-da47da7779d7.png">
+
 
 # Introduction
 
