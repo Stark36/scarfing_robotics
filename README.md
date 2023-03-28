@@ -13,8 +13,6 @@ Source code for development of a simulation for multi-robot collaboration in ROS
 - [Other information](https://github.com/Stark36/scarfing_robotics#other-information)
 
 * * *
-<img width="338" alt="image" src="https://user-images.githubusercontent.com/48813131/228118605-69b48dbc-034b-46a5-8bc0-da47da7779d7.png">
-
 
 # Introduction
 
@@ -39,13 +37,18 @@ To that end, the composite repair process of scarfing will be trialed in simulat
 
 For the simulator, Gazebo was chosen for its strong integration with ROS. In world construction, the *custom.world* file is located in *worlds* of *ur5_gripper_moveit_config* package, while the robot models and workpiece mesh are in the *custom_urdf* folder.
 
-<u>Robots</u>
+<ins>Robots</ins>
+
+![Processor & Evaluator models](https://user-images.githubusercontent.com/48813131/228121354-c299b4fd-dd8e-4194-b2e5-c8cd64ee76b1.png)
 In the two-robot work cell, the Processor and Evaluator utilise the ur5 arm from the universal_robot package as their base.
 
 - For the Processor, a *gripper* from the *robotiq\_gripper* package was attached to the *ee\_link* of the ur5 arm through the use of a fixed joint.
 - For the Evaluator, a *kinect* from the *common\_sensors* (Dairal) package was attached to the *ee\_link* of the ur5 arm through the use of a fixed joint.
 
-<u>Workpiece</u>
+<ins>Workpiece</ins>
+
+![Workpiece mesh](https://user-images.githubusercontent.com/48813131/228120306-3b7babe0-3370-4f85-a822-5d73002ffc63.png)
+
 The model was designed in Autodesk Fusion 360 with a single curved surface to provide 3D surface topography for emulating a composite workpiece. A support column was also added for emulating a workpiece mount.
 
 </br>
@@ -123,7 +126,8 @@ catkin build
 
 # Usage
 
-## MoveIt Bypass
+## MoveIt bypass
+![MoveIt bypass](https://user-images.githubusercontent.com/48813131/228120456-867028e6-c53f-4676-bcd2-e0e0f826c3e7.png)
 
 In separate terminals, execute the following launch files:
 
@@ -134,6 +138,8 @@ roslaunch one_arm_test	test2.launch
 ```
 
 ## Namespace
+![Namespace error](https://user-images.githubusercontent.com/48813131/228120523-99e8ed84-e8a2-4ce5-895a-680cda6118a5.png)
+
 Make the following edits in the file:
 <u>kinect_properties.urdf.xacro in common_sensors</u>
 ```
@@ -157,6 +163,8 @@ roslaunch one_arm_test	test.launch
 ```
 
 ## Prefix
+![Prefix error](https://user-images.githubusercontent.com/48813131/228120575-a84d52c8-b7fc-4988-898d-4ede32f93068.png)
+
 In separate terminals, execute the following launch files:
 
 ```
